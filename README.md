@@ -28,53 +28,53 @@ The list below is the messages defined and used by Core Server. You need this to
 1) Player connected to server
 
 	RECEIVE: 	
-	```[CONNECTED;<player-name>]```		(Everyone except sender)
+	 [CONNECTED;<player-name>]		(Everyone except sender)
 	
 2) Player disconnected from server
 
 	RECEIVE:	
-	```[DISCONNECTED;<player-name>]``` 	(Everyone except sender)
+	 [DISCONNECTED;<player-name>] 	(Everyone except sender)
 	
 3) Player send a chat message in Global chat
 
 	SEND: 		
-	```[CHAT;<message>]```
+	 [CHAT;<message>]
 	RECEIVE: 	
-	```[CHAT;<player-name>;<message>]```	(Everyone in Global lobby)
+	 [CHAT;<player-name>;<message>]	(Everyone in Global lobby)
 
 4) Player created a Room
 
 	SEND:		
-	```[CREATEROOM;<room-name>;<max-players>]```
+	[CREATEROOM;<room-name>;<max-players>]
 
 5) Player joined room
 
 	SEND:		
-	```[JOINROOM;<room-name>]```
+	[JOINROOM;<room-name>]
 	RECEIVE:	
-	```[JOINEDROOM;<room-name>]```		(Sender)
-	```[JOINROOM;<player-name>]```		(Players already in room)
-	```[NOROOM;<room-name>]```			(Sender - when room not found)
-	```[ROOMFULL;<room-name>]```			(Sender - when room is full)
+	[JOINEDROOM;<room-name>]		(Sender)
+	[JOINROOM;<player-name>]		(Players already in room)
+	[NOROOM;<room-name>]		(Sender - when room not found)
+	[ROOMFULL;<room-name>]			(Sender - when room is full)
 
 6) Player left room
 
 	SEND:		
-	```[LEAVEROOM]```
+	[LEAVEROOM]
 	RECEIVE:	
-	```[LEFTROOM;<player-name>]```		(Players already in room)
+	[LEFTROOM;<player-name>]		(Players already in room)
 	
 7) Player chat in a room
 
 	SEND:		
-	```[CHATROOM;<message>]```
+	[CHATROOM;<message>]
 	RECEIVE:	
-	```[CHATROOM;<player-name>;<message>]``` (Players already in room)
+	[CHATROOM;<player-name>;<message>] (Players already in room)
 
 8) Get available room list
 
 	SEND:		
-	```[GETROOMLIST]```
+	[GETROOMLIST]
 	RECEIVE:	
-	```[ROOMLIST;<list-of-room-name>]```	(Sender)	
+	[ROOMLIST;<list-of-room-name>]	(Sender)	
 
