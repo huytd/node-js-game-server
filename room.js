@@ -10,4 +10,14 @@ function run(room, player, msg)
 	console.log("Processing " + player.name + "@" + room.name + ": " + msg);
 }
 
+function update(room)
+{
+	// Update room
+	if (room.IsPlaying())
+	{
+		console.log("Room " + room.name + " is playing");
+	}
+}
+
+module.exports.update = update;
 module.exports.run = run;

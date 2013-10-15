@@ -44,12 +44,47 @@ CORE SERVER MESSAGES:
 8) Get available room list:
 	SEND:		[GETROOMLIST]
 	RECEIVE:	[ROOMLIST;<list-of-room-name>]	(Sender)		
+	
+9) Ready/Cancel in room:
+	SEND:		[READY] / [CANCEL]
+	RECEIVE:	[PLAYERREADY;<player-name>] / [PLAYERCANCEL;<player-name>] (Players already in room)
+*/
+
+/*
+
+TODO:
+	- Add realtime update for room
+
+DEV DIARY:
+
+7:00 - 13/10/2013: It's a beautiful sunday, have nothing to do. So, I decided to make something. I will learn node.js and make something fun today!
+
+15:00 - 13/10/2013: Sorry guys, my girlfriend coming. Stop coding now >:)
+
+22:45 - 13/10/2013: Weekend ended. Back to work now :D
+
+14/10/2013: The first release with: 
+	- Connecting to server
+	- Disconnecting from server
+	- Player joining room
+	- Player creating room
+	- Chat in global lobby
+	- Chat in room
+	- Room.js module
+
+15/10/2013: Today, the storm coming to the city, I got a day off so I spent all my day to coding =]]
+	- Add Find functions for arrays (to find room/player by name)
+	- Add Room Type (to create many types of room with different game logic - eg: deathmatch, capture the flags,...)
+	- Add Room state switching functions and auto switch state when player connected
+	- Add Player ready function (to switch ready/waiting when player is in room)
+	- Add realtime update for room
+	- Auto remove unused room (finished room, playing room with no players,...)
 */
 
 var roomScript = require('./room.js');
 
 var net = require('net');
-var serverPort = 8080;
+var serverPort = 8888;
 
 // Define Player class and player list
 var playerList = [];
@@ -60,6 +95,25 @@ function Player(_x, _y, _name, _socket)
 	this.name = _name;
 	this.room = null;
 	this.socket = _socket;
+	this.is_ready = false;
+	
+	this.Ready = function()
+	{
+		if (this.room != null)
+		{
+			this.is_ready = true;
+			this.room.broadCast("[PLAYERREADY;" + this.name + "]", this); // Send ready message to all players	
+		}
+	}
+	
+	this.Cancel = function()
+	{
+		if (this.room != null)
+		{
+			this.is_ready = false;
+			this.room.broadCast("[PLAYERCANCEL;" + this.name + "]", this); // Send cancel message to all players	
+		}		
+	}
 
 	this.joinRoom = function(roomName)
 	{
@@ -74,6 +128,15 @@ function Player(_x, _y, _name, _socket)
 				{
 					r.players.push(cplayer);
 					r.playerCount++;
+					// Switch room state
+					if (r.playerCount < r.maxPlayer) 
+					{
+						r.Wait(); // Still waiting for players
+					}
+					else
+					{
+						if (r.IsWaiting()) r.Ready(); // Switch to ready state
+					}
 					cplayer.room = r;
 					console.log("[!] " + cplayer.name + " joined room " + r.name);
 					r.broadCast("[JOINROOM;" + cplayer.name + "]", cplayer);	
@@ -99,6 +162,10 @@ function Player(_x, _y, _name, _socket)
 		{
 			this.room.players.remove(this);
 			this.room.playerCount--;
+			if (this.room.playerCount < this.room.maxPlayer)
+			{
+				this.room.Wait();
+			}
 			this.room.broadCast("[LEFTROOM;" + this.name + "]", this);
 			console.log("[!] " + this.name + " left room " + this.room.name);
 			this.room = null;
@@ -115,7 +182,8 @@ function Room(_name, _maxPlayer)
 	this.maxPlayer = _maxPlayer;
 	this.playerCount = 0;
 	this.players = [];
-	this.roomState = 'Waiting'; // Waiting - Playing - Finished
+	this.roomState = 'WAITING'; // WAITING - READY - PLAYING - FINISHED
+	this.roomType = 'Type01'; // Check this in room.js to create more game types
 	
 	this.broadCast = function(message, _except)
 	{
@@ -128,6 +196,43 @@ function Room(_name, _maxPlayer)
 		});
 	}
 	
+	// Switch state
+	this.Wait = function()
+	{
+		this.roomState = "WAITING";
+	}
+	this.IsWaiting = function()
+	{
+		return (this.roomState == "WAITING");
+	}
+	
+	this.Ready = function()
+	{
+		this.roomState = "READY";
+	}
+	this.IsReady = function()
+	{
+		return (this.roomState == "READY");
+	}
+	
+	this.Play = function()
+	{
+		this.roomState = "PLAYING";
+	}
+	this.IsPlaying = function()
+	{
+		return (this.roomState == "PLAYING");
+	}
+	
+	this.Finish = function()
+	{
+		this.roomState = "FINISHED";
+	}
+	this.IsFinished = function()
+	{
+		return (this.roomState == "FINISHED");
+	}
+	
 }
 
 // Add remove function for arrays
@@ -135,6 +240,13 @@ Array.prototype.remove = function(e) {
   for (var i = 0; i < this.length; i++) {
     if (e == this[i]) { return this.splice(i, 1); }
   }
+};
+
+// Add find by name function for arrays (to find player or room)
+Array.prototype.find = function(name) {
+	for (var i = 0; i < this.length; i++) {
+		if (name == this[i].name) { return this[i]; }
+	}	
 };
 
 // Add trim feature
@@ -173,6 +285,35 @@ function GlobalChat(message, except)
 		});	
 	}
 }
+
+// Update room
+setInterval(function(){
+	roomList.forEach(function(r){
+		if (r.IsFinished() || (!r.IsWaiting() && r.playerCount <= 0))
+		{
+			roomList.remove(r);
+		}
+		if (!r.IsFinished() && r.playerCount > 0)
+		{
+			// Switch from READY to PLAYING mode
+			if (r.IsReady())
+			{
+				var isAllReady = true;
+				r.players.forEach(function(p){
+					if (p.is_ready == false)
+					{
+						isAllReady = false;
+					}
+				});	
+				if (isAllReady)
+				{
+					r.Play();
+				}
+			}
+			roomScript.update(r);	
+		}	
+	});
+}, 10);
 
 // Main Server
 net.createServer(function(socket) {
@@ -239,6 +380,14 @@ net.createServer(function(socket) {
     		// Broadcast
     		var chat = receivedData.substring(10, receivedData.length - 1);
     		player.room.broadCast("[CHATROOM;" + player.name + ";" + chat + "]", player);
+    	}
+    	if (receivedData.startsWith("[READY]"))
+    	{
+			player.Ready();
+    	}
+    	if (receivedData.startsWith("[CANCEL]"))
+    	{
+	    	player.Cancel();
     	}
     	// ===================== EACH ROOM ================================
     	roomList.forEach(function(r){
